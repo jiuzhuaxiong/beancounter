@@ -49,6 +49,9 @@ type ElectrumBackend struct {
 	transactionsMu sync.Mutex // mutex to guard read/writes to transactions map
 	transactions   map[string]int64
 	doneCh         chan bool
+
+	blockRequests  chan int32
+	blockResponses chan *BlockResponse
 }
 
 const (
@@ -80,6 +83,8 @@ func NewElectrumBackend(addr, port string, network utils.Network) (*ElectrumBack
 		addrRequests:     make(chan *deriver.Address, 2*maxPeers),
 		addrResponses:    make(chan *AddrResponse, 2*maxPeers),
 		txResponses:      make(chan *TxResponse, 2*maxPeers),
+		blockRequests:    make(chan int32, 2*maxPeers),
+		blockResponses:   make(chan *BlockResponse, 2*maxPeers),
 
 		peersRequests: make(chan struct{}),
 		txRequests:    make(chan string, 2*maxPeers),
@@ -127,6 +132,14 @@ func (eb *ElectrumBackend) AddrResponses() <-chan *AddrResponse {
 // backend.
 func (eb *ElectrumBackend) TxResponses() <-chan *TxResponse {
 	return eb.txResponses
+}
+
+func (eb *ElectrumBackend) BlockRequest(height int32) {
+	eb.blockRequests <- height
+}
+
+func (eb *ElectrumBackend) BlockResponses() <-chan *BlockResponse {
+	return eb.blockResponses
 }
 
 // Finish informs the backend to stop doing its work.
@@ -227,6 +240,11 @@ func (eb *ElectrumBackend) processRequests(node *electrum.Node) {
 			if err != nil {
 				return
 			}
+		case block := <-eb.blockRequests:
+			err := eb.processBlockRequest(node, block)
+			if err != nil {
+				return
+			}
 		}
 	}
 }
@@ -266,6 +284,28 @@ func (eb *ElectrumBackend) processTxRequest(node *electrum.Node, txHash string) 
 		Hash:   txHash,
 		Height: eb.getTxHeight(txHash),
 		Hex:    hex,
+	}
+
+	return nil
+}
+
+// note: we could be more efficient and batch things up.
+func (eb *ElectrumBackend) processBlockRequest(node *electrum.Node, height int32) error {
+	block, err := node.BlockchainBlockHeaders(height, 1)
+	if err != nil {
+		log.Printf("processBlockRequest failed with: %s, %+v", node.Ident, err)
+		eb.removeNode(node.Ident)
+
+		// requeue request
+		// TODO: we should have a retry counter and fail gracefully if an address fails too
+		// many times.
+		eb.blockRequests <- height
+		return err
+	}
+
+	eb.blockResponses <- &BlockResponse{
+		Height: height,
+		Hex:    block.Hex,
 	}
 
 	return nil

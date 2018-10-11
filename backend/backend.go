@@ -29,6 +29,9 @@ type Backend interface {
 	AddrResponses() <-chan *AddrResponse
 	TxResponses() <-chan *TxResponse
 
+	BlockRequest(height int32)
+	BlockResponses() <-chan *BlockResponse
+
 	Finish()
 }
 
@@ -43,6 +46,11 @@ type AddrResponse struct {
 type TxResponse struct {
 	Hash   string
 	Height int64
+	Hex    string
+}
+
+type BlockResponse struct {
+	Height int32
 	Hex    string
 }
 

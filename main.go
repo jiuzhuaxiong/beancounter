@@ -3,10 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/square/beancounter/blockfinder"
 	"math"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/square/beancounter/accounter"
 	"github.com/square/beancounter/backend"
@@ -37,6 +39,7 @@ var (
 	blockHeight   = kingpin.Flag("block-height", "compute balance at given block height").Default("0").Int64()
 	singleAddress = kingpin.Flag("single-address", "for debugging purpose").String()
 	fixtureFile   = kingpin.Flag("fixture-file", "fixture file to use for recording data or reading from").PlaceHolder("FILEPATH").String()
+	findBlock     = kingpin.Flag("find-block", "finds the last block number given a time. E.g. \"2006-01-02 15:04:05 MST\"").PlaceHolder("date+time").String()
 )
 
 func main() {
@@ -53,6 +56,22 @@ func main() {
 			fmt.Println("Piping stdin forbidden.")
 			return
 		}
+	}
+
+	if *findBlock != "" {
+		t, err := time.Parse("2006-01-02 15:04:05 MST", *findBlock)
+		PanicOnError(err)
+
+		backend, err := buildBackend(Mainnet)
+		PanicOnError(err)
+		bf := blockfinder.New(backend)
+		block, median, timestamp := bf.Search(t)
+		fmt.Printf("Closest block to '%s' is block #%d with a median time of '%s'\n",
+			t.String(), block, median.String())
+		if *debug {
+			fmt.Printf("timestamp: '%s'\n", timestamp.String())
+		}
+		return
 	}
 
 	if *m <= 0 {
@@ -179,7 +198,7 @@ func getServer(network Network) (string, string) {
 	}
 	switch network {
 	case "mainnet":
-		return "electrum.petrkr.net", "s50002"
+		return "e.keff.org", "t50001"
 	case "testnet":
 		return "electrum_testnet_unlimited.criptolayer.net", "s50102"
 	default:

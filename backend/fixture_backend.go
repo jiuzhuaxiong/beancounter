@@ -80,6 +80,14 @@ func (b *FixtureBackend) TxResponses() <-chan *TxResponse {
 	return b.txResponses
 }
 
+func (b *FixtureBackend) BlockRequest(height int32) {
+	panic("unimplemented")
+}
+
+func (b *FixtureBackend) BlockResponses() <-chan *BlockResponse {
+	panic("unimplemented")
+}
+
 // Finish informs the backend to stop doing its work.
 func (b *FixtureBackend) Finish() {
 	close(b.doneCh)

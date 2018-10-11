@@ -113,6 +113,12 @@ type Peer struct {
 	Features []string
 }
 
+type Block struct {
+	Count uint   `json:"count"`
+	Hex   string `json:"hex"`
+	Max   uint   `json:"max"`
+}
+
 func NewNode(addr, port string, network utils.Network) (*Node, error) {
 	n := &Node{}
 	var a string
@@ -203,33 +209,6 @@ func (n *Node) BlockchainAddressGetHistory(address string) ([]*Transaction, erro
 	return result, nil
 }
 
-// MarshalJSON provides a custom Marshal method for Vin.
-func (v *Vin) MarshalJSON() ([]byte, error) {
-	if v.IsCoinBase() {
-		coinbaseStruct := struct {
-			Coinbase string `json:"coinbase"`
-			Sequence uint32 `json:"sequence"`
-		}{
-			Coinbase: v.Coinbase,
-			Sequence: v.Sequence,
-		}
-		return json.Marshal(coinbaseStruct)
-	}
-
-	txStruct := struct {
-		Txid      string     `json:"txid"`
-		Vout      uint32     `json:"vout"`
-		ScriptSig *ScriptSig `json:"scriptSig"`
-		Sequence  uint32     `json:"sequence"`
-	}{
-		Txid:      v.Txid,
-		Vout:      v.Vout,
-		ScriptSig: v.ScriptSig,
-		Sequence:  v.Sequence,
-	}
-	return json.Marshal(txStruct)
-}
-
 // BlockchainTransactionGet returns a raw transaction.
 //
 // https://electrumx.readthedocs.io/en/latest/protocol-methods.html#blockchain-transaction-get
@@ -266,6 +245,13 @@ func (n *Node) ServerPeersSubscribe() ([]Peer, error) {
 	}
 
 	return out, nil
+}
+
+// BlockchainBlockHeaders returns a block header (160 hex).
+func (n *Node) BlockchainBlockHeaders(height int32, count uint) (Block, error) {
+	var block Block
+	err := n.request("blockchain.block.headers", []interface{}{height, count}, &block)
+	return block, err
 }
 
 func (n *Node) request(method string, params []interface{}, result interface{}) error {

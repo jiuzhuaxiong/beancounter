@@ -118,6 +118,14 @@ func (b *BtcdBackend) TxResponses() <-chan *TxResponse {
 	return b.txResponses
 }
 
+func (b *BtcdBackend) BlockRequest(height int32) {
+	panic("unimplemented")
+}
+
+func (b *BtcdBackend) BlockResponses() <-chan *BlockResponse {
+	panic("unimplemented")
+}
+
 // Finish informs the backend to stop doing its work.
 func (b *BtcdBackend) Finish() {
 	close(b.addrResponses)

@@ -74,6 +74,14 @@ func (rb *RecorderBackend) TxResponses() <-chan *TxResponse {
 	return rb.txResponses
 }
 
+func (b *RecorderBackend) BlockRequest(height int32) {
+	panic("unimplemented")
+}
+
+func (b *RecorderBackend) BlockResponses() <-chan *BlockResponse {
+	panic("unimplemented")
+}
+
 // Finish informs the backend to stop doing its work.
 func (rb *RecorderBackend) Finish() {
 	rb.backend.Finish()
