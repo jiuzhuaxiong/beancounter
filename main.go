@@ -1,19 +1,8 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"math"
-	"os"
-	"strconv"
-	"strings"
-
-	"github.com/square/beancounter/accounter"
-	"github.com/square/beancounter/backend"
-	"github.com/square/beancounter/backend/electrum"
-	"github.com/square/beancounter/deriver"
-	. "github.com/square/beancounter/utils"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"os"
 	//	_ "net/http/pprof"
 )
 
@@ -24,24 +13,48 @@ import (
 // - watch
 // - singleAddress
 var (
-	m             = kingpin.Flag("m", "number of signatures (quorum)").Short('m').Required().Int()
-	n             = kingpin.Flag("n", "number of public keys").Short('n').Required().Int()
-	account       = kingpin.Flag("account", "account number").Required().Uint32()
-	backendName   = kingpin.Flag("backend", "electrum | btcd | electrum-recorder | btcd-recorder | fixture").Default("electrum").Enum("electrum", "btcd", "electrum-recorder", "btcd-recorder", "fixture")
-	lookahead     = kingpin.Flag("lookahead", "lookahead size").Default("100").Uint32()
-	addr          = kingpin.Flag("addr", "backend to connect to initially").PlaceHolder("HOST:PORT").TCP()
-	rpcUser       = kingpin.Flag("rpcuser", "RPC username").PlaceHolder("USER").String()
-	rpcPass       = kingpin.Flag("rpcpass", "RPC password").PlaceHolder("PASSWORD").String()
-	debug         = kingpin.Flag("debug", "debug output").Default("false").Bool()
-	findAddr      = kingpin.Flag("find-addr", "finds the offset of an address").String()
-	blockHeight   = kingpin.Flag("block-height", "compute balance at given block height").Default("0").Int64()
-	singleAddress = kingpin.Flag("single-address", "for debugging purpose").String()
-	fixtureFile   = kingpin.Flag("fixture-file", "fixture file to use for recording data or reading from").PlaceHolder("FILEPATH").String()
+	app   = kingpin.New("beancounter", "A command-line Bitcoin wallet balance audit tool.")
+	debug = app.Flag("debug", "Enable debug output.").Default("false").Bool()
+
+	keytree    = app.Command("keytree", "Performs one or more child key derivations.")
+	keytreeArg = keytree.Arg("i", "(repeated) Values for path.").Required().Strings()
+	keytreeN   = keytree.Flag("n", "number of public keys").Short('n').Default("1").Int()
+
+	findAddr  = app.Command("find-addr", "Finds the change/index values for a given address.")
+	findAddrM = findAddr.Flag("m", "number of signatures (quorum)").Short('m').Default("1").Int()
+	findAddrN = findAddr.Flag("n", "number of public keys").Short('n').Default("1").Int()
+
+	findBlock            = app.Command("find-block", "Finds the block height for a given date/time.")
+	findBlockTimestamp   = findBlock.Arg("timestamp", "date/time to resolve. E.g. \"2006-01-02 15:04:05 MST\"").Required().String()
+	findBlockBackend     = findBlock.Flag("backend", "electrum | btcd | electrum-recorder | btcd-recorder | fixture").Default("electrum").Enum("electrum", "btcd", "electrum-recorder", "btcd-recorder", "fixture")
+	findBlockAddr        = findBlock.Flag("addr", "Backend to connect to initially. Defaults to a hardcoded node for Electrum and localhost for Btcd.").PlaceHolder("HOST:PORT").TCP()
+	findBlockRpcUser     = findBlock.Flag("rpcuser", "RPC username").PlaceHolder("USER").String()
+	findBlockRpcPass     = findBlock.Flag("rpcpass", "RPC password").PlaceHolder("PASSWORD").String()
+	findBlockFixtureFile = findBlock.Flag("fixture-file", "Fixture file to use for recording or replaying data.").PlaceHolder("FILEPATH").String()
+
+	computeBalance            = app.Command("compute-balance", "Computes balance for a given watch wallet.")
+	computeBalanceBlockHeight = computeBalance.Flag("block-height", "compute balance at given block height").Default("0").Int64()
+	computeBalanceType        = computeBalance.Flag("type", "multisig | standard | single-address").Required().Enum("multisig", "standard", "single-address")
+	computeBalanceM           = computeBalance.Flag("m", "number of signatures (quorum)").Short('m').Default("1").Int()
+	computeBalanceN           = computeBalance.Flag("n", "number of public keys").Short('n').Default("1").Int()
+	computeBalanceBackend     = computeBalance.Flag("backend", "electrum | btcd | electrum-recorder | btcd-recorder | fixture").Default("electrum").Enum("electrum", "btcd", "electrum-recorder", "btcd-recorder", "fixture")
+	computeBalanceAddr        = computeBalance.Flag("addr", "Backend to connect to initially. Defaults to a hardcoded node for Electrum and localhost for Btcd.").PlaceHolder("HOST:PORT").TCP()
+	computeBalanceRpcUser     = computeBalance.Flag("rpcuser", "RPC username").PlaceHolder("USER").String()
+	computeBalanceRpcPass     = computeBalance.Flag("rpcpass", "RPC password").PlaceHolder("PASSWORD").String()
+	computeBalanceFixtureFile = computeBalance.Flag("fixture-file", "Fixture file to use for recording or replaying data.").PlaceHolder("FILEPATH").String()
+	computeBalanceLookahead   = computeBalance.Flag("lookahead", "lookahead size").Default("100").Uint32()
 )
 
 func main() {
 	kingpin.Version("0.0.2")
+	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+
+	}
+	kingpin.Version("0.0.2")
 	kingpin.Parse()
+}
+
+/*
 
 	if *debug {
 		electrum.DebugMode = true
@@ -186,3 +199,5 @@ func getServer(network Network) (string, string) {
 		panic("unreachable")
 	}
 }
+
+*/
